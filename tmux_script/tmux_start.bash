@@ -15,14 +15,14 @@ if [ $? != 0 ]; then
     window=0
     tmux rename-window -t $session:$window 'workspace'
     tmux send-keys -t $session:$window 'cd ~/movelei' C-m
-    tmux send-keys -t $session:$window 'roscore' C-m
+    tmux send-keys -t $session:$window 'roscore' 
 
     tmux split-window -v
     tmux send-keys -t $session:$window 'cd ~/movelei/demo/; python3 movelei_demo.py ' C-m
     tmux select-layout tiled
 
     tmux split-window -h
-    tmux send-keys -t $session:$window 'sleep 5; cd ~/movelei/pygame/examples/; python3 aliens.py ' C-m
+    tmux send-keys -t $session:$window 'sleep 5; cd ~/movelei/pygame/examples/; python3 aliens.py ' 
     tmux select-layout tiled
 
     tmux split-window -h

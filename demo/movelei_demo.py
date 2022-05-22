@@ -46,6 +46,12 @@ KEYPOINT_EDGE_INDS_TO_COLOR = {
     (14, 16): 'c'
 }
 
+COUNTER_DICT = {
+    'left_counter': 0,
+    'right_counter': 0,
+    'middle_counter': 0
+}
+
 class MoveNetInference:
     def __init__(self):
         self.model_path = "../human_pose_estimation/model/lite-model_movenet_singlepose_lightning_tflite_float16_4.tflite" 
@@ -58,10 +64,8 @@ class MoveNetInference:
         self.tf_size = (192, 192)
         self.success = True
         self.keyboard = Controller()
-        self.counter = 0
-        self.counter_left = 0
-        self.counter_right = 0
-        self.counter_left_percent = 0
+        self.shoot = False
+        self.power = False
 
     def OpenCamera(self):
         self.default_video_source = 0
@@ -109,7 +113,11 @@ class MoveNetInference:
 
             # iterate through keypoints
             # print(self.keypoints_with_scores.shape)
+            i = 0
+            self.shoot = False
+            self.power = False
             for k in self.keypoints_with_scores[0,0,:,:]:
+                
                 # Converts to numpy array
                 # print(self.keypoints_with_scores.shape)
                 # print(k.shape)
@@ -120,13 +128,41 @@ class MoveNetInference:
                     yc = int(k[0] * self.y)
                     xc = int(k[1] * self.x)
 
-                    self.counter += 1
-
-                    if (k[1] >= 0.5):
+                    if (k[1] >= 0.65):
                         colour = (0, 255, 0)
-                        self.counter_left += 1
-                    else:
+                        COUNTER_DICT["left_counter"] += 1
+                    elif (k[1] <= 0.35):
                         colour = (0, 0, 255)
+                        COUNTER_DICT["right_counter"] += 1
+                    else:
+                        colour = (255, 0, 0)
+                        COUNTER_DICT["middle_counter"] += 1
+
+                    if(i == 7 or i == 8 or i == 9 or i == 10):
+                        if(k[0] <= 0.5):
+                            self.shoot = True
+                        else:
+                            self.shoot = False
+
+                    if(i == 0):
+                        if(k[0] >= 0.75):
+                            self.power = True
+                        else:
+                            self.power = False
+
+                    # if(i == 7):
+                    #     shoulder_left_x_pos = k[1]
+                    #     print("shoulder_left: ", shoulder_left_x_pos)
+                    # if(i == 8):
+                    #     shoulder_right_x_pos = k[1]
+                    #     print("shoulder right: ", shoulder_right_x_pos)
+
+                    # if(i == 9):
+                    #     wrist_left_x_pos = k[1]
+                    #     print("wrist left: ", wrist_left_x_pos)
+                    # if(i == 10):
+                    #     wrist_right_x_pos = k[1]
+                    #     print("wrist right: ", wrist_right_x_pos)
 
                     # Draws a circle on the image for each keypoint
                     self.img = cv2.circle(self.img, (xc, yc), 2, colour, 5)
@@ -134,34 +170,36 @@ class MoveNetInference:
             
                     # Shows image
                     cv2.imshow('Movelei', self.flipverticalimg)
-
-            if(self.counter == 0):
-                self.counter = 1
-
-            self.counter_left_percent = self.counter_left/self.counter
-            print(self.counter_left_percent)
-
+                    
+                    i += 1
+            
             self.keyboard.release(Key.left)          
             self.keyboard.release(Key.right)
+            self.keyboard.release('y')
+            # self.keyboard.release('n')
             
-            if(self.counter_left_percent > 0.5):  
-                self.keyboard.press(Key.left)
-                # time.sleep(0.01)
-                # for x in range(100):
-                #     # self.keyboard.press(Key.left)
-                #     # self.keyboard.release(Key.left)
-                #     x += 1
-            else:
-                self.keyboard.press(Key.right)
-                # time.sleep(0.01)
-                # for x in range(100):
-                #     # self.keyboard.press(Key.right)
-                #     # self.keyboard.release(Key.right)
-                #     x += 1            
+            counter_max = max(COUNTER_DICT, key=COUNTER_DICT.get)
+            # print("maximum count:", counter_max)
 
-            self.counter = 0
-            self.counter_left = 0
-            self.counter_right = 0
+            if(counter_max == 'left_counter'): 
+                self.keyboard.press(Key.left)
+            elif(counter_max == 'right_counter'):
+                self.keyboard.press(Key.right)
+            elif(counter_max == 'middle_counter'):
+                pass
+
+            if(self.shoot):
+                self.keyboard.press('y')
+                print("shoot")
+
+            if(self.power):
+                self.keyboard.tap('n')
+                print("power")
+
+            for key,value in COUNTER_DICT.items():
+                # print(key, ": ", value)
+                COUNTER_DICT[key] = 0
+
             # Waits for the next frame, checks if q was pressed to quit
             if cv2.waitKey(1) == ord("q"):
                 break
@@ -170,6 +208,9 @@ class MoveNetInference:
             self.success, self.img = self.cap.read()
 
         self.cap.release()
+
+    def SendKeyboardCommand(self):
+        pass
 
     def _keypoints_and_edges_for_display(keypoints_with_scores,
                                         height,
